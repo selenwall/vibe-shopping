@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inköpslistor (Lokal)</title>
+    <meta name="description" content="En enkel web-app för inköpslistor, helt lokal i din webbläsare." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Inköpslistor</h1>
+      <div class="header-actions">
+        <button id="exportBtn" class="secondary">Exportera</button>
+        <label class="import-label">
+          <input type="file" id="importInput" accept="application/json" />
+          Importera
+        </label>
+      </div>
+    </header>
+
+    <div class="app">
+      <aside class="sidebar" aria-label="Listor">
+        <div class="sidebar-header">
+          <h2>Dina listor</h2>
+          <form id="newListForm" class="inline-form" autocomplete="off">
+            <input id="newListName" type="text" placeholder="Ny lista…" aria-label="Namn på ny lista" required />
+            <button type="submit">Skapa</button>
+          </form>
+        </div>
+        <nav id="listsNav" class="lists"></nav>
+      </aside>
+
+      <main class="content" aria-live="polite">
+        <div class="content-header">
+          <div class="title-group">
+            <input id="activeListTitle" class="title-input" type="text" aria-label="Byt namn på lista" />
+          </div>
+          <div class="content-actions">
+            <button id="clearDoneBtn" class="secondary">Rensa avklarade</button>
+            <button id="deleteListBtn" class="danger" title="Ta bort denna lista">Ta bort lista</button>
+          </div>
+        </div>
+
+        <section class="controls">
+          <form id="newItemForm" class="new-item-form" autocomplete="off">
+            <input id="itemName" type="text" placeholder="Lägg till vara…" aria-label="Varunamn" required />
+            <input id="itemQty" type="text" placeholder="Antal" aria-label="Antal" />
+            <input id="itemCategory" type="text" placeholder="Kategori" aria-label="Kategori" />
+            <input id="itemNotes" type="text" placeholder="Noteringar" aria-label="Noteringar" />
+            <button type="submit">Lägg till</button>
+          </form>
+
+          <div class="filters">
+            <input id="searchInput" type="search" placeholder="Sök i listan…" aria-label="Sök" />
+            <select id="statusFilter" aria-label="Filtera status">
+              <option value="all">Alla</option>
+              <option value="open">Endast öppna</option>
+              <option value="done">Endast avklarade</option>
+            </select>
+            <select id="sortSelect" aria-label="Sortera">
+              <option value="default">Manuell ordning</option>
+              <option value="status">Status (öppna först)</option>
+              <option value="name">Namn (A–Ö)</option>
+              <option value="category">Kategori (A–Ö)</option>
+            </select>
+          </div>
+        </section>
+
+        <ul id="itemsList" class="items" role="list"></ul>
+      </main>
+    </div>
+
+    <template id="listLinkTemplate">
+      <button class="list-link" data-id="">
+        <span class="name"></span>
+        <span class="count" aria-label="Antal öppna"></span>
+      </button>
+    </template>
+
+    <template id="itemTemplate">
+      <li class="item" draggable="true" data-id="">
+        <label class="checkbox">
+          <input type="checkbox" class="toggle" />
+          <span class="checkmark" aria-hidden="true"></span>
+        </label>
+        <div class="item-main">
+          <div class="row">
+            <input class="item-name" type="text" />
+            <input class="item-qty" type="text" placeholder="Antal" />
+          </div>
+          <div class="row">
+            <input class="item-category" type="text" placeholder="Kategori" />
+            <input class="item-notes" type="text" placeholder="Noteringar" />
+          </div>
+        </div>
+        <button class="remove" title="Ta bort">✕</button>
+      </li>
+    </template>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
