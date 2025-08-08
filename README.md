@@ -1,28 +1,25 @@
-# Inköpslistor – Web App (Statisk / GitHub Pages)
+# Inköpslistor (helt lokal web app)
 
-En helt statisk SPA som hanterar inköpslistor i webbläsaren via LocalStorage. Automatisk kategorisering sker klient-side med regler + fuzzy, och kan valfritt använda OpenAI om användaren anger sin egen API-nyckel i UI:t.
+- Ingen Python
+- Ingen backend
+- Ingen Docker
 
-## Start lokalt (ingen build krävs)
-Öppna `docs/index.html` i din webbläsare direkt från filsystemet eller serva `docs/` med valfri enkel HTTP-server.
+Endast en web-app som körs helt i webbläsaren och sparar allt lokalt via LocalStorage.
 
-Exempel:
-```bash
-# via Python
-python3 -m http.server --directory docs 8080
-# öppna http://localhost:8080
-```
+## Starta
 
-## GitHub Pages
-1. Lägg koden i ett GitHub-repo
-2. Gå till Settings → Pages
-3. Source: Deploy from a branch
-4. Branch: `main` (eller din default) och folder: `/docs`
-5. Spara – din sida blir tillgänglig på GitHub Pages-URL:en
+- Öppna `index.html` i din webbläsare (dubbelklicka eller dra in i ett tomt flikfönster).
+- Klart. Ingen byggprocess, inga beroenden.
 
-## AI-kategorisering (valfritt)
-I toppen av sidan finns "AI-inställningar" där du kan ange `OPENAI_API_KEY` och modell (t.ex. `gpt-4o-mini`). Nyckeln lagras i LocalStorage och anropen går direkt från din webbläsare till OpenAI.
+Tips: Vill du ha en lokal http-server (valfritt) kan du använda valfri statisk server. Det behövs inte för att appen ska fungera.
 
-Om ingen nyckel anges används en lokal regelbaserad + fuzzy-kategorisering.
+## Funktioner
 
-## Backend-kod (valfri)
-I repo finns även en tidigare backend-implementation (`app/`, FastAPI) som inte behövs för GitHub Pages. Den kan ignoreras om du bara vill köra statiskt.
+- Flera listor, byt namn, ta bort
+- Lägg till varor med antal, kategori och noteringar
+- Markera som avklarad, rensa avklarade
+- Sök, filtrera och sortera
+- Dra och släpp för manuell ordning
+- Exportera/Importera alla listor som JSON
+
+All data sparas i `localStorage` under nyckeln `shoppingLists.v1`.
