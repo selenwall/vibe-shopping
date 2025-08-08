@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inköpslistor</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Inköpslistor</h1>
+
+    <section class="create-list">
+      <input id="list-name" placeholder="Ny lista, t.ex. Veckohandel" />
+      <button id="create-list-btn">Skapa lista</button>
+    </section>
+
+    <section class="lists" id="lists"></section>
+  </main>
+
+  <template id="list-template">
+    <div class="list">
+      <h2 class="list-title"></h2>
+      <div class="item-form">
+        <input class="item-name" placeholder="Lägg till vara, t.ex. mjölk" />
+        <input class="item-qty" type="number" min="0" step="1" placeholder="Antal" />
+        <input class="item-unit" placeholder="Enhet (st, l, kg)" />
+        <button class="add-item">Lägg till</button>
+      </div>
+      <div class="items"></div>
+    </div>
+  </template>
+
+  <script>
+    async function api(path, options={}) {
+      const res = await fetch(path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    }
+
+    async function loadLists() {
+      const lists = await api('/api/lists');
+      const container = document.getElementById('lists');
+      container.innerHTML = '';
+      const tpl = document.getElementById('list-template');
+      for (const list of lists) {
+        const node = tpl.content.cloneNode(true);
+        node.querySelector('.list-title').textContent = list.name + ' #' + list.id;
+        const itemsDiv = node.querySelector('.items');
+
+        const addBtn = node.querySelector('.add-item');
+        const nameEl = node.querySelector('.item-name');
+        const qtyEl = node.querySelector('.item-qty');
+        const unitEl = node.querySelector('.item-unit');
+
+        addBtn.addEventListener('click', async () => {
+          const payload = {
+            name: nameEl.value,
+            quantity: Number(qtyEl.value) || 1,
+            unit: unitEl.value || null,
+          };
+          const item = await api(`/api/lists/${list.id}/items`, { method: 'POST', body: JSON.stringify(payload) });
+          renderItem(item, itemsDiv);
+          nameEl.value = '';
+          qtyEl.value = '';
+          unitEl.value = '';
+        });
+
+        const items = await api(`/api/lists/${list.id}/items`);
+        for (const item of items) renderItem(item, itemsDiv);
+
+        container.appendChild(node);
+      }
+    }
+
+    function renderItem(item, container) {
+      const div = document.createElement('div');
+      div.className = 'item';
+      const cat = item.category ? ` (${item.category})` : '';
+      div.innerHTML = `
+        <span>${item.name}${cat} – ${item.quantity}${item.unit ? ' ' + item.unit : ''}</span>
+        <button>Ta bort</button>
+      `;
+      div.querySelector('button').addEventListener('click', async () => {
+        await api(`/api/items/${item.id}`, { method: 'DELETE' });
+        div.remove();
+      });
+      container.appendChild(div);
+    }
+
+    document.getElementById('create-list-btn').addEventListener('click', async () => {
+      const name = document.getElementById('list-name').value.trim();
+      if (!name) return;
+      await api('/api/lists', { method: 'POST', body: JSON.stringify({ name }) });
+      document.getElementById('list-name').value = '';
+      loadLists();
+    });
+
+    loadLists();
+  </script>
+</body>
+</html>
