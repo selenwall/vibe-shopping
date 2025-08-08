@@ -1,36 +1,28 @@
-# Inköpslistor – Web App
+# Inköpslistor – Web App (Statisk / GitHub Pages)
 
-En enkel FastAPI-app med HTML/JS-frontend för att hantera inköpslistor. Varor kategoriseras automatiskt (AI om nyckel finns, annars regler + fuzzy match).
+En helt statisk SPA som hanterar inköpslistor i webbläsaren via LocalStorage. Automatisk kategorisering sker klient-side med regler + fuzzy, och kan valfritt använda OpenAI om användaren anger sin egen API-nyckel i UI:t.
 
-## Funktioner
-- Skapa flera listor
-- Lägg till/ta bort varor
-- Automatisk kategorisering (mejeri, bröd, frukt & grönt, kött & fisk, skafferi, dryck, hushåll, frys)
+## Start lokalt (ingen build krävs)
+Öppna `docs/index.html` i din webbläsare direkt från filsystemet eller serva `docs/` med valfri enkel HTTP-server.
 
-## Körning med Docker (rekommenderas)
+Exempel:
 ```bash
-docker compose up --build
-```
-Appen körs på http://localhost:8000
-
-Valfri AI-nyckel:
-```bash
-export OPENAI_API_KEY=sk-...
-docker compose up --build
+# via Python
+python3 -m http.server --directory docs 8080
+# öppna http://localhost:8080
 ```
 
-## Lokal körning (utan Docker)
-Kräver Python 3.10+
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn uvicorn_app:app --reload --host 0.0.0.0 --port 8000
-```
+## GitHub Pages
+1. Lägg koden i ett GitHub-repo
+2. Gå till Settings → Pages
+3. Source: Deploy from a branch
+4. Branch: `main` (eller din default) och folder: `/docs`
+5. Spara – din sida blir tillgänglig på GitHub Pages-URL:en
 
-## .env
-Kopiera `.env.example` till `.env` och fyll i vid behov.
+## AI-kategorisering (valfritt)
+I toppen av sidan finns "AI-inställningar" där du kan ange `OPENAI_API_KEY` och modell (t.ex. `gpt-4o-mini`). Nyckeln lagras i LocalStorage och anropen går direkt från din webbläsare till OpenAI.
 
-## Noteringar om AI-kategorisering
-- Om `OPENAI_API_KEY` finns används en Chat Completions-modell (default `gpt-4o-mini`).
-- Om AI saknas eller fallerar används regelbaserad och fuzzy-kategorisering.
+Om ingen nyckel anges används en lokal regelbaserad + fuzzy-kategorisering.
+
+## Backend-kod (valfri)
+I repo finns även en tidigare backend-implementation (`app/`, FastAPI) som inte behövs för GitHub Pages. Den kan ignoreras om du bara vill köra statiskt.
