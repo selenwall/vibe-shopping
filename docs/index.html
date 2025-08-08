@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inköpslistor (Statisk)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Inköpslistor</h1>
+
+    <details class="ai-settings">
+      <summary>AI-inställningar (valfritt)</summary>
+      <p>
+        För att använda AI-kategorisering kan du ange din OpenAI API-nyckel här. Nyckeln sparas i
+        din webbläsares LocalStorage och skickas direkt till OpenAI från din webbläsare.
+        Dela inte en känslig nyckel på delade enheter.
+      </p>
+      <label>OpenAI API-nyckel
+        <input id="openai-key" type="password" placeholder="sk-..." />
+      </label>
+      <label>Modell
+        <input id="openai-model" value="gpt-4o-mini" />
+      </label>
+      <button id="save-ai">Spara AI-inställningar</button>
+      <button id="clear-ai" class="secondary">Rensa</button>
+      <p class="hint">Om du inte anger nyckel används regelbaserad + fuzzy-kategorisering som körs lokalt.</p>
+    </details>
+
+    <section class="create-list">
+      <input id="list-name" placeholder="Ny lista, t.ex. Veckohandel" />
+      <button id="create-list-btn">Skapa lista</button>
+    </section>
+
+    <section class="lists" id="lists"></section>
+  </main>
+
+  <template id="list-template">
+    <div class="list">
+      <div class="list-head">
+        <h2 class="list-title"></h2>
+        <button class="delete-list danger">Ta bort lista</button>
+      </div>
+      <div class="item-form">
+        <input class="item-name" placeholder="Lägg till vara, t.ex. mjölk" />
+        <input class="item-qty" type="number" min="0" step="1" placeholder="Antal" />
+        <input class="item-unit" placeholder="Enhet (st, l, kg)" />
+        <button class="add-item">Lägg till</button>
+      </div>
+      <div class="items"></div>
+    </div>
+  </template>
+
+  <script>
+    // ----- Storage -----
+    const STORAGE_KEY = 'shoppingAppData.v1';
+
+    function loadData() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { lists: [], nextListId: 1, nextItemId: 1 };
+      try { return JSON.parse(raw); } catch { return { lists: [], nextListId: 1, nextItemId: 1 }; }
+    }
+
+    function saveData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    // ----- AI Settings -----
+    const AI_KEY_STORAGE = 'shoppingAI.key';
+    const AI_MODEL_STORAGE = 'shoppingAI.model';
+
+    function loadAISettings() {
+      return {
+        key: localStorage.getItem(AI_KEY_STORAGE) || '',
+        model: localStorage.getItem(AI_MODEL_STORAGE) || 'gpt-4o-mini',
+      };
+    }
+
+    function saveAISettings(key, model) {
+      if (key) localStorage.setItem(AI_KEY_STORAGE, key); else localStorage.removeItem(AI_KEY_STORAGE);
+      if (model) localStorage.setItem(AI_MODEL_STORAGE, model); else localStorage.removeItem(AI_MODEL_STORAGE);
+    }
+
+    // ----- Categorizer (rules + fuzzy) -----
+    const DEFAULT_CATEGORIES = {
+      'mejeri': ['mjölk', 'smör', 'yoghurt', 'grädde', 'ost', 'filmjölk', 'creme fraiche'],
+      'bröd': ['bröd', 'fralla', 'baguette', 'knäckebröd', 'tortilla'],
+      'frukt & grönt': ['äpple', 'banan', 'lök', 'tomat', 'gurka', 'morot', 'paprika', 'potatis', 'citron'],
+      'kött & fisk': ['kyckling', 'nötfärs', 'lax', 'fläsk', 'korv', 'bacon'],
+      'skafferi': ['pasta', 'ris', 'socker', 'mjöl', 'olja', 'salt', 'peppar', 'ketchup', 'senap'],
+      'dryck': ['läsk', 'juice', 'vatten', 'kaffe', 'te'],
+      'hushåll': ['toalettpapper', 'diskmedel', 'tvättmedel', 'soppåse'],
+      'frys': ['glass', 'frysta bär', 'frysta grönsaker'],
+    };
+
+    const ALLOWED_CATEGORIES = Object.keys(DEFAULT_CATEGORIES);
+
+    function norm(s){ return (s||'').trim().toLowerCase(); }
+
+    function levenshtein(a, b) {
+      a = norm(a); b = norm(b);
+      const m = a.length, n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const dp = new Array(n + 1);
+      for (let j = 0; j <= n; j++) dp[j] = j;
+      for (let i = 1; i <= m; i++) {
+        let prev = i - 1; dp[0] = i;
+        for (let j = 1; j <= n; j++) {
+          const tmp = dp[j];
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[j] = Math.min(
+            dp[j] + 1,
+            dp[j - 1] + 1,
+            prev + cost
+          );
+          prev = tmp;
+        }
+      }
+      return dp[n];
+    }
+
+    function similarity(a, b){
+      const maxLen = Math.max(norm(a).length, norm(b).length) || 1;
+      return 1 - (levenshtein(a, b) / maxLen);
+    }
+
+    async function categorizeWithAIIfAvailable(name){
+      const { key, model } = loadAISettings();
+      if (!key) return { category: null, source: 'ai:disabled' };
+      try {
+        const system = "Du är en assistent som klassificerar dagligvaror till svenska kategorier för inköpslista. Svara ENBART med kategorin: mejeri, bröd, frukt & grönt, kött & fisk, skafferi, dryck, hushåll, frys. Om okänt, svara 'okänt'.";
+        const user = `Vara: ${name}`;
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+          body: JSON.stringify({
+            model: model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: user },
+            ],
+            temperature: 0,
+          })
+        });
+        if (!resp.ok) throw new Error('AI request failed');
+        const data = await resp.json();
+        const text = (data.choices?.[0]?.message?.content || '').trim().toLowerCase();
+        const cat = ALLOWED_CATEGORIES.includes(text) ? text : null;
+        return { category: cat === 'okänt' ? null : cat, source: 'ai' };
+      } catch {
+        return { category: null, source: 'ai:error' };
+      }
+    }
+
+    function categorizeWithRules(name){
+      const n = norm(name);
+      // exact or substring in examples
+      for (const [cat, examples] of Object.entries(DEFAULT_CATEGORIES)){
+        for (const ex of examples){
+          const e = norm(ex);
+          if (n === e || n.includes(e) || e.includes(n)) {
+            return { category: cat, source: 'rule:match' };
+          }
+        }
+      }
+      // fuzzy against all examples
+      let best = { cat: null, score: 0 };
+      for (const [cat, examples] of Object.entries(DEFAULT_CATEGORIES)){
+        for (const ex of examples){
+          const s = similarity(n, ex);
+          if (s > best.score) best = { cat, score: s };
+        }
+      }
+      if (best.score >= 0.72) return { category: best.cat, source: `rule:fuzzy:${best.score.toFixed(2)}` };
+
+      // keywords
+      const hints = [
+        ['mejeri', ['mjölk','smör','yoghurt','grädde','ost']],
+        ['frukt & grönt', ['äpple','banan','tomat','gurka','morot','lök']],
+        ['skafferi', ['pasta','ris','mjöl','socker']],
+      ];
+      for (const [cat, kws] of hints){
+        if (kws.some(k => n.includes(k))) return { category: cat, source: 'rule:kw' };
+      }
+      return { category: null, source: 'rule:none' };
+    }
+
+    async function categorize(name){
+      const ai = await categorizeWithAIIfAvailable(name);
+      if (ai.category) return ai;
+      return categorizeWithRules(name);
+    }
+
+    // ----- UI -----
+    const els = {
+      lists: document.getElementById('lists'),
+      createBtn: document.getElementById('create-list-btn'),
+      listName: document.getElementById('list-name'),
+      aiKey: document.getElementById('openai-key'),
+      aiModel: document.getElementById('openai-model'),
+      saveAI: document.getElementById('save-ai'),
+      clearAI: document.getElementById('clear-ai'),
+    };
+
+    function loadAIIntoForm(){
+      const { key, model } = loadAISettings();
+      els.aiKey.value = key;
+      els.aiModel.value = model || 'gpt-4o-mini';
+    }
+
+    els.saveAI.addEventListener('click', () => {
+      saveAISettings(els.aiKey.value.trim(), els.aiModel.value.trim());
+      alert('AI-inställningar sparade.');
+    });
+    els.clearAI.addEventListener('click', () => {
+      saveAISettings('', '');
+      loadAIIntoForm();
+      alert('AI-inställningar rensade.');
+    });
+
+    function render(){
+      const data = loadData();
+      els.lists.innerHTML = '';
+      const tpl = document.getElementById('list-template');
+      for (const list of data.lists){
+        const node = tpl.content.cloneNode(true);
+        node.querySelector('.list-title').textContent = `${list.name} #${list.id}`;
+
+        const itemsDiv = node.querySelector('.items');
+        for (const item of list.items){ renderItem(item, itemsDiv, list.id); }
+
+        const addBtn = node.querySelector('.add-item');
+        const nameEl = node.querySelector('.item-name');
+        const qtyEl = node.querySelector('.item-qty');
+        const unitEl = node.querySelector('.item-unit');
+        addBtn.addEventListener('click', async () => {
+          const name = nameEl.value.trim();
+          if (!name) return;
+          const quantity = Number(qtyEl.value) || 1;
+          const unit = unitEl.value.trim() || null;
+          const cat = await categorize(name);
+          const data = loadData();
+          const l = data.lists.find(x => x.id === list.id);
+          if (!l) return;
+          const newItem = { id: data.nextItemId++, name, quantity, unit, category: cat.category };
+          l.items.push(newItem);
+          saveData(data);
+          render();
+        });
+
+        node.querySelector('.delete-list').addEventListener('click', () => {
+          const data = loadData();
+          data.lists = data.lists.filter(l => l.id !== list.id);
+          saveData(data);
+          render();
+        });
+
+        els.lists.appendChild(node);
+      }
+    }
+
+    function renderItem(item, container, listId){
+      const div = document.createElement('div');
+      div.className = 'item';
+      const cat = item.category ? ` (${item.category})` : '';
+      div.innerHTML = `
+        <span>${item.name}${cat} – ${item.quantity}${item.unit ? ' ' + item.unit : ''}</span>
+        <button class="danger">Ta bort</button>
+      `;
+      div.querySelector('button').addEventListener('click', () => {
+        const data = loadData();
+        const l = data.lists.find(x => x.id === listId);
+        if (!l) return;
+        l.items = l.items.filter(i => i.id !== item.id);
+        saveData(data);
+        render();
+      });
+      container.appendChild(div);
+    }
+
+    els.createBtn.addEventListener('click', () => {
+      const name = els.listName.value.trim();
+      if (!name) return;
+      const data = loadData();
+      data.lists.push({ id: data.nextListId++, name, items: [] });
+      saveData(data);
+      els.listName.value = '';
+      render();
+    });
+
+    // init
+    loadAIIntoForm();
+    render();
+  </script>
+</body>
+</html>
