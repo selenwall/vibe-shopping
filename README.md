@@ -1,17 +1,29 @@
-# Inköpslistor (helt lokal web app)
+# Inköpslistor (web app)
 
-- Ingen Python
-- Ingen backend
 - Ingen Docker
+- Minimal NodeJS-endpoint för datum/tid
 
-Endast en web-app som körs helt i webbläsaren och sparar allt lokalt via LocalStorage.
+UI:n i `index.html`, `app.js`, `styles.css` körs helt i webbläsaren och sparar allt lokalt via LocalStorage.
 
-## Starta
+## Starta (Codespaces eller lokalt)
 
-- Öppna `index.html` i din webbläsare (dubbelklicka eller dra in i ett tomt flikfönster).
-- Klart. Ingen byggprocess, inga beroenden.
+- Installera beroenden och starta API:t (NodeJS):
 
-Tips: Vill du ha en lokal http-server (valfritt) kan du använda valfri statisk server. Det behövs inte för att appen ska fungera.
+```
+npm install
+npm run start
+```
+
+- Öppna den vidarebefordrade porten (3000). Testa endpointen:
+  - `GET /api/time` → svarar med aktuell tid som JSON
+
+Exempel:
+```
+curl http://localhost:3000/api/time
+# { "iso": "2025-01-01T12:34:56.789Z", "epochMs": 1735734896789, "locale": "2025-01-01, 13:34:56" }
+```
+
+- (Valfritt) Öppna `index.html` direkt i en webbläsare för den helt lokala demot utan backend.
 
 ## Funktioner
 
@@ -22,4 +34,4 @@ Tips: Vill du ha en lokal http-server (valfritt) kan du använda valfri statisk 
 - Dra och släpp för manuell ordning
 - Exportera/Importera alla listor som JSON
 
-All data sparas i `localStorage` under nyckeln `shoppingLists.v1`.
+All data i det lokala demot sparas i `localStorage` under nyckeln `shoppingLists.v1`.
