@@ -1,55 +1,26 @@
 # Development
 
-Run the app locally either with Docker (recommended) or directly on your machine.
+This repo now uses a minimal NodeJS API and a static browser UI.
 
-## Using Docker
+## Run in Codespaces
 
-Prereqs: Docker Desktop or Docker Engine.
-
-1) Copy env (optional, only needed for AI categorization):
-
+1) Install dependencies and start the server:
 ```
-cp .env.example .env
-# then edit .env to add your OPENAI_API_KEY if you want AI-assisted categorization
+npm install
+npm run start
 ```
-
-2) Build and start both services (backend + nginx frontend proxy):
-
+2) Forward port 3000. Test:
 ```
-docker compose up --build
+curl http://localhost:3000/api/time
 ```
 
-- Frontend: http://localhost:5173
-- Backend API (direct): http://localhost:8000/docs
-- Data persists in the named volume `db_data` (SQLite file under /data in the container)
+## Run locally
 
-Hot reload: Code changes in the repo are mounted into the backend container and uvicorn runs with `--reload`.
-
-## Without Docker (local Python)
-
-Prereqs: Python 3.11+
-
+Prereqs: Node 18+
 ```
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn uvicorn_app:app --reload --host 0.0.0.0 --port 8000
+npm install
+npm run start
 ```
+Open: `http://localhost:3000/api/time`
 
-Open the app at:
-
-- http://localhost:8000/ (FastAPI serves the static UI from `static/`)
-- API docs: http://localhost:8000/docs
-
-Optional AI categorization:
-
-```
-export OPENAI_API_KEY=sk-...
-# OPENAI_MODEL is optional; defaults to gpt-4o-mini
-```
-
-## Notes
-- There are two frontends in this repo:
-  - `static/` is the UI that talks to the backend API (what Docker serves by default).
-  - `index.html`, `app.js`, `styles.css` in the repo root are a fully local demo that uses `localStorage` only (no backend).
-- In Docker, Nginx serves the `static/` UI on port 5173 and proxies `/api/*` to the backend on port 8000.
+UI demo (no backend needed): open `index.html` in your browser. It stores data in `localStorage`.
