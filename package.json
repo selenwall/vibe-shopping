@@ -1,0 +1,21 @@
+{
+  "name": "vibe-shopping-node-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js Express backend for /api/date",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --ext js --watch server.js server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

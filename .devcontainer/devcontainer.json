@@ -1,20 +1,19 @@
 {
-  "name": "fastapi-backend",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "forwardPorts": [8000],
+  "name": "node-backend",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [3000],
   "portsAttributes": {
-    "8000": {
+    "3000": {
       "label": "api",
       "onAutoForward": "openBrowser"
     }
   },
-  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt",
-  "postStartCommand": "uvicorn uvicorn_app:app --host 0.0.0.0 --port 8000 --reload",
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm run dev",
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance"
+        "dbaeumer.vscode-eslint"
       ]
     }
   }
