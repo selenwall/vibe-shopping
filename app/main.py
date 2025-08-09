@@ -16,6 +16,7 @@ from .models import (
     ItemRead,
 )
 from .categorizer import categorize
+from datetime import date
 
 load_dotenv()
 
@@ -109,3 +110,8 @@ def categorize_endpoint(payload: dict) -> dict:
     name = payload.get("name", "")
     result = categorize(name)
     return {"category": result.category, "source": result.source}
+
+
+@app.get("/api/date")
+def get_current_date() -> dict:
+    return {"date": date.today().isoformat()}
